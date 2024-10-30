@@ -1,5 +1,5 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
-From Coq Require Import Strings.String.  (* for manual grading *)
+From Coq Require Import Strings.String. 
 From Coq Require Export Bool.Bool.
 From Coq Require Export Arith.Arith.
 From Coq Require Export Arith.PeanoNat.
