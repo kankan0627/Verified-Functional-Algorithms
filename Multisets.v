@@ -148,32 +148,23 @@ Proof.
   { rewrite H0. auto. }
   clear H0.
   generalize dependent bl.  
-  induction al.     
-  - intros.  simpl in H. induction bl. 
-    + apply perm_nil. 
-    + simpl in H. unfold union in H. unfold singleton in H.
-      specialize H with a. rewrite Nat.eqb_refl in H.
-      inversion H. 
-  - intros. induction bl. 
-    + simpl in H. specialize H with a. 
-      unfold union in H. unfold singleton in H. 
-      rewrite Nat.eqb_refl in H. simpl in H.
-      inversion H. 
-    + simpl in H. unfold union in H. unfold singleton in H.  
-      destruct (a =? a0) eqn:Haa0.
-      * apply Nat.eqb_eq in Haa0. subst. apply perm_skip.
-         apply IHal. intros x. 
-         specialize H with x. destruct (x =? a0) eqn:Hn. 
-         -- apply Nat.eqb_eq in Hn. subst. inversion H. auto. 
-         -- simpl in H. auto. 
-      *  apply perm_trans with bl.   
-        -- apply IHbl. intros. simpl. unfold union. unfold singleton. 
-           destruct (x =? a) eqn:Hn. 
-           ++ specialize H with x. rewrite Hn in H. apply Nat.eqb_eq in Hn.
-              subst. rewrite Haa0 in H. lia. 
-           ++ specialize H with x. destruct (x =? a0) eqn:Hnn; [|rewrite Hn in H; auto].  
+  induction al; simpl; intros bl Hc. 
+  - unfold empty in Hc. apply contents_nil_inv in Hc. rewrite Hc.
+    apply perm_nil.
+  - unfold union in Hc. unfold singleton in Hc.
+    specialize (Hc a) as Hca.
+    rewrite Nat.eqb_refl in Hca. apply contents_cons_inv in Hca.
+    destruct Hca as [lb1 [lb2 [Elb Hca]]].
+    rewrite Elb in *.  rewrite Permutation_app_comm.
+    simpl. apply perm_skip. rewrite Permutation_app_comm.
+    apply IHal. intros x. bdestruct (x =? a).
+    + subst x. symmetry. apply Hca.
+    + rewrite <- (contents_insert_other _ _ a x H).
+      rewrite <- Hc. apply Nat.eqb_neq in H. rewrite H. reflexivity.
+Qed.
 
-
+             
+ 
 
 
 
