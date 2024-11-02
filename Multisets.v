@@ -150,7 +150,7 @@ Proof.
   generalize dependent bl.  
   induction al; simpl; intros bl Hc. 
   - unfold empty in Hc. apply contents_nil_inv in Hc. rewrite Hc.
-    apply perm_nil.
+    apply perm_nil. 
   - unfold union in Hc. unfold singleton in Hc.
     specialize (Hc a) as Hca.
     rewrite Nat.eqb_refl in Hca. apply contents_cons_inv in Hca.
@@ -163,8 +163,33 @@ Proof.
       rewrite <- Hc. apply Nat.eqb_neq in H. rewrite H. reflexivity.
 Qed.
 
-             
+Theorem same_contents_iff_perm: forall al bl,
+    contents al = contents bl <-> Permutation al bl.
+Proof.
+  intros.
+  split.  
+  - apply contents_perm. 
+  - apply perm_contents. 
+Qed.          
  
+Theorem sort_specifications_equivalent: forall sort,
+    is_a_sorting_algorithm sort <-> is_a_sorting_algorithm' sort.
+Proof.
+  intros. 
+  split. 
+  - intros. unfold is_a_sorting_algorithm in H. 
+    unfold is_a_sorting_algorithm'. intros. split. 
+    + specialize (H al) as Ha. destruct Ha. 
+      apply perm_contents in H0. apply H0. 
+    + specialize (H al) as H. 
+      destruct H. apply H0.
+  - intros. unfold is_a_sorting_algorithm' in H.
+    unfold is_a_sorting_algorithm. intros al. 
+     specialize (H al) as Ha. destruct Ha. 
+     split. 
+     + apply contents_perm. apply H0. 
+     + apply H1.
+Qed. 
 
 
 
