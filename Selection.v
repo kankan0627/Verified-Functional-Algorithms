@@ -3,8 +3,6 @@ From VFA Require Import Perm.
 Hint Constructors Permutation : core.
 From Coq Require Export Lists.List.
 
- Set Printing All.
-
 Fixpoint select (x: nat) (l: list nat) : nat * list nat :=
   match l with
   | [] => (x, [])
@@ -148,22 +146,61 @@ Lemma select_smallest: forall al bl x y,
     select x al = (y, bl) ->
     y <=* bl.
 Proof.
- intros. 
- generalize dependent al. generalize dependent x.
- generalize dependent y.
- induction bl. 
- - intros. unfold le_all. apply Forall_nil. 
+ induction al.   
+ - intros. unfold le_all. simpl in H. inversion H. apply Forall_nil. 
  - intros. unfold le_all. apply Forall_map.  
-   rewrite map_id. apply select_perm in H.  
-  apply Forall_perm with (x::al).
-   + apply perm_trans with (y :: a :: bl).  
+   rewrite map_id. simpl in H. bdestruct (x <=? a).  
+   + destruct (select x al) as [c' d'] eqn:E.
+     inversion H. subst. assert (select x al = (y, d')).
+     * apply E. 
+     * apply select_fst_leq in E. apply Forall_cons.
+       -- lia. 
+       -- apply IHal in H1. unfold le_all in H1.  
+          apply Forall_map in H1. 
+          rewrite map_id in H1. apply H1. 
+   + destruct (select a al) as [c' d'] eqn:E. inversion H. 
+     subst. apply Forall_cons. apply select_fst_leq in E.
+     * lia. 
+     * apply IHal in E. unfold le_all in E. apply Forall_map in E. 
+       rewrite map_id in E. apply E. 
+Qed.
 
+Lemma select_in : forall al bl x y,
+    select x al = (y, bl) ->
+    In y (x :: al).
+Proof.
+  induction al.   
+  - intros. simpl in H. inversion H. Search In. apply in_eq. 
+  - intros. simpl. simpl in H. bdestruct (x <=? a).  
+    + destruct (select x al) as [c' d'] eqn:E.
+     inversion H. subst. apply IHal in E. simpl in E.
+     destruct E. 
+     * left. apply H1. 
+     * right. right. apply H1. 
+    + destruct (select a al) as [c' d'] eqn:E. inversion H. 
+     subst. apply IHal in E. simpl in E.
+     destruct E. 
+     * right. left. apply H1. 
+     * right. right. apply H1.
+Qed. 
 
-
-
-
-
-
-
-
+Lemma cons_of_small_maintains_sort: forall bl y n,
+    n = length bl ->
+    y <=* bl ->
+    sorted (selsort bl n) ->
+    sorted (y :: selsort bl n).
+Proof.
+  intros. destruct n. 
+  - simpl. destruct bl.
+    * apply sorted_1. 
+    * apply sorted_1. 
+  - simpl. destruct bl. 
+    * apply sorted_1. 
+    * simpl in H1. destruct (select n0 bl ) as [c' d'] eqn:E. 
+      apply sorted_cons. 
+      -- apply (le_all__le_one _ _ c') in H0.
+         ++ apply H0. 
+         ++ apply select_in in E. apply E. 
+      -- apply H1. 
+Qed.  
 
