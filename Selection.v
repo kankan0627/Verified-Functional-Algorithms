@@ -204,3 +204,148 @@ Proof.
       -- apply H1. 
 Qed.  
 
+Lemma selsort_sorted : forall n al,
+    length al = n -> sorted (selsort al n).
+Proof.
+  induction n. 
+  - intros. simpl. destruct al. 
+    + apply sorted_nil.
+    + apply sorted_nil. 
+  - intros. simpl. destruct al. 
+     + apply sorted_nil.
+    + destruct (select n0 al ) as [c' d'] eqn:E. 
+      apply cons_of_small_maintains_sort. 
+      * simpl in H. inversion H. apply (select_rest_length n0 _ c' _). 
+        apply E. 
+      * apply select_smallest in E. apply E. 
+      * apply IHn. simpl in H. inversion H. symmetry. 
+        apply (select_rest_length n0 _ c' _). apply E. 
+Qed.
+
+Lemma selection_sort_sorted : forall al,
+    sorted (selection_sort al).
+Proof.
+ unfold selection_sort.  
+ intros. apply selsort_sorted. auto. 
+Qed.
+
+Theorem selection_sort_is_correct :
+  is_a_sorting_algorithm selection_sort.
+Proof.
+ unfold is_a_sorting_algorithm. intros.
+ split.
+ - apply selection_sort_perm. 
+ - apply selection_sort_sorted.
+Qed.
+
+Require Import Recdef.
+
+Function selsort' l {measure length l} :=
+  match l with
+  | [] => []
+  | x :: r => let (y, r') := select x r
+            in y :: selsort' r'
+end.
+Proof.
+  intros l x r HL y r' Hsel.
+  apply select_rest_length in Hsel. inv Hsel. simpl. lia.
+Defined.
+
+Example selsort'_example : selsort' [3;1;4;1;5;9;2;6;5] = [1;1;2;3;4;5;5;6;9].
+Proof. reflexivity. Qed.
+
+Print selsort'.
+Print selsort'_terminate.
+Check selsort'_equation.
+
+Lemma selsort'_perm : forall n l,
+    length l = n -> Permutation l (selsort' l).
+Proof.
+  induction n.
+  - intros. destruct l.
+    + simpl. apply perm_nil. 
+    + inversion H. 
+  - induction l.  
+    + intros. inversion H.  
+    + intros. rewrite selsort'_equation. destruct (select a l) as [c' d'] eqn:E. 
+      apply select_perm in E. apply perm_trans with (c' :: d').
+      * apply E.
+      * apply perm_skip. apply IHn. 
+      simpl in H. injection H. intros. apply Permutation_length in E.
+      inversion E. apply H0.
+Qed.  
+
+Lemma cons_of_small_maintains_sort': forall bl y,
+    y <=* bl ->
+    sorted (selsort' bl) ->
+    sorted (y :: selsort' bl).
+Proof.
+  intros. rewrite selsort'_equation. destruct bl. 
+  - apply sorted_1. 
+  - rewrite selsort'_equation in H0. destruct (select n bl ) as [c' d'] eqn:E. 
+      apply sorted_cons. 
+      -- apply (le_all__le_one _ _ c') in H.
+         ++ apply H. 
+         ++ apply select_in in E. apply E. 
+      -- apply H0. 
+Qed.  
+
+Lemma selsort'_sorted : forall n al,
+    length al = n -> sorted (selsort' al).
+Proof.
+  induction n. 
+  - intros. destruct al. 
+    + apply sorted_nil.
+    + inversion H.
+  - intros. rewrite selsort'_equation. destruct al. 
+     + apply sorted_nil.
+    + destruct (select n0 al ) as [c' d'] eqn:E. 
+      apply cons_of_small_maintains_sort'. 
+      * simpl in H. inversion H.  
+        apply select_smallest in E. apply E. 
+      * apply IHn. simpl in H. inversion H. symmetry. 
+        apply (select_rest_length n0 _ c' _). apply E. 
+Qed.
+
+Theorem selsort'_is_correct :
+  is_a_sorting_algorithm selsort'.
+Proof.
+ unfold is_a_sorting_algorithm. intros.  
+ split.
+ - eapply selsort'_perm. auto. 
+ - eapply selsort'_sorted. auto. 
+Qed. 
+
+From VFA Require Import Multisets.
+
+Lemma select_contents : forall al bl x y,
+  select x al = (y, bl) ->
+  union (singleton x) (contents al) = union (singleton y) (contents bl).
+Proof.
+  induction al. 
+  - intros. simpl in H. inversion H. simpl. auto. 
+  - simpl. intros. bdestruct (x <=? a).
+    + destruct (select x al ) as [c' d'] eqn:E. inversion H. simpl. apply IHal in E. 
+      rewrite union_swap.
+        assert (union (singleton y) (union (singleton a) (contents d')) 
+          = union (singleton a) (union (singleton y) (contents d'))).
+       -- rewrite union_swap. auto. 
+       -- rewrite H1. rewrite E. subst. auto.
+     + destruct (select a al ) as [c' d'] eqn:E. inversion H. subst. 
+       simpl. apply IHal in E.  assert (union (singleton y) (union (singleton x) (contents d')) 
+          = union (singleton x) (union (singleton y) (contents d'))).
+       * rewrite union_swap. auto.
+       * rewrite E. rewrite H1. auto. 
+Qed.   
+
+
+
+
+
+
+
+
+
+
+
+
