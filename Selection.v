@@ -338,6 +338,55 @@ Proof.
        * rewrite E. rewrite H1. auto. 
 Qed.   
 
+Lemma selection_sort_contents : forall n l,
+  length l = n ->
+  contents l = contents (selection_sort l).
+Proof. 
+  intros. 
+generalize dependent n.
+induction l. 
+  - intros. simpl. auto.
+  - intros. simpl. unfold selection_sort. 
+      simpl. destruct (select a l ) as [c' d'] eqn:E.
+      simpl. assert (select a l = (c', d')). 
+      * auto.
+      * apply select_rest_length in H0.  
+        apply select_contents in E. rewrite E. 
+      simpl in H. destruct n. 
+         -- inversion H.
+         -- inversion H.  apply IHl in H2. rewrite H0.
+            assert (Permutation d' (selsort d' (length d'))).
+            ++ apply selection_sort_perm. 
+            ++ apply same_contents_iff_perm in H1. rewrite H1. auto. 
+Qed. 
+
+Lemma sorted_iff_sorted : forall l, sorted l <-> Sort.sorted l.
+Proof. 
+  intros. split.  
+  - intros. induction H. 
+     + apply Sort.sorted_nil. 
+     + apply Sort.sorted_1.
+     + apply Sort.sorted_cons.
+       * apply H.
+       * apply IHsorted.
+  - intros. induction H. 
+     + apply sorted_nil. 
+     + apply sorted_1.
+     + apply sorted_cons.
+       * apply H.
+       * apply IHsorted.
+Qed.
+
+Theorem selection_sort_correct' :
+  is_a_sorting_algorithm' selection_sort.
+Proof.
+  unfold is_a_sorting_algorithm'. 
+  intros. split. 
+  - eapply selection_sort_contents. auto. 
+  - apply sorted_iff_sorted. apply selection_sort_sorted. 
+Qed.
+
+
 
 
 
