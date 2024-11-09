@@ -134,30 +134,105 @@ Lemma sorted_merge : forall l1, sorted l1 ->
                      forall l2, sorted l2 ->
                      sorted (merge l1 l2).
 Proof. 
-  induction l1. 
+  induction l1.  
   - intros H. induction l2.
     + intros. simpl. apply H. 
     + intros. simpl. apply H0. 
-  - intros H. induction l2.
-    + intros.  simpl. apply H. 
-    + intros.  destruct (a <=? a0) eqn:Heq.
-      * simpl. rewrite Heq. induction l1.
+  - intros H. intros. induction l2. 
+    + simpl. apply H. 
+    + simpl. destruct (a <=? a0) eqn:Heq.
+      * induction l1. 
         -- simpl. apply sorted_cons. 
-           ++ apply Nat.leb_le in Heq. apply Heq.
-           ++ apply H0.
-        --  inversion H. apply Nat.leb_le in Heq.  apply sorted_merge1.
-           ++ apply H3.
-           ++ apply Heq.
-           ++  apply IHl1. 
-              ** apply H5.
+           ++ apply Nat.leb_le in Heq. apply Heq. 
+           ++ apply H0.  
+        -- apply sorted_merge1. 
+           ++ inversion H.  apply H3.
+           ++ apply Nat.leb_le. apply Heq.
+           ++ apply IHl1. inversion H.
+              ** apply H5. 
               ** apply H0.
-       * simpl. rewrite Heq. induction l2.
+       * destruct l2. 
          -- apply sorted_cons. 
-            ++ apply leb_iff_conv in Heq. lia. 
-            ++ apply H. 
-         -- destruct (a <=? a1) eqn:Hen. 
-            ++ apply sorted_cons.
-               ** apply leb_iff_conv in Heq. lia. 
-               ** inversion H0.  Search "<=?". 
-  
+           ++ Search "<=?".  apply leb_iff_conv in Heq. lia. 
+           ++ apply H. 
+         -- simpl in IHl2.  destruct (a <=? n) eqn:Hn.
+            ++ apply sorted_cons. 
+               ** apply leb_iff_conv in Heq. lia.
+               ** apply IHl2.
+                   inversion H0. apply H5. 
+            ++ apply sorted_cons. 
+               ** inversion H0. apply H3. 
+               ** apply IHl2. inversion H0. apply H5.
+Qed.
 
+Lemma mergesort_sorts: forall l, sorted (mergesort l).
+Proof.
+  apply mergesort_ind; intros.
+  - apply sorted_nil. 
+  - apply sorted_1. 
+  - apply sorted_merge.
+    + apply H.
+    + apply H0. 
+Qed.
+
+Lemma merge_perm: forall (l1 l2: list nat),
+    Permutation (l1 ++ l2) (merge l1 l2).
+Proof.
+  induction l1.
+  - simpl. destruct l2. 
+    + apply perm_nil. 
+    + apply Permutation_refl. 
+  - induction l2. 
+    + simpl. rewrite app_nil_r. apply Permutation_refl. 
+    + simpl. destruct (a <=? a0) eqn:Heq.
+      * apply perm_skip. apply IHl1. 
+      * simpl in IHl2.  destruct l2.  
+        -- apply perm_trans with (l1++a::[a0]).
+           ++ apply Permutation_middle.
+           ++ replace (a0 :: a :: l1) with ([a0] ++ a :: l1) by auto. apply Permutation_elt.
+              apply Permutation_app_comm. 
+        -- destruct (a <=? n) eqn:Hn.  
+           ++ simpl. apply perm_trans with (a0::a :: l1 ++ n :: l2).  
+              ** replace (a :: l1 ++ a0 :: n :: l2) with ([a] ++ l1 ++ [a0] ++ [n] ++ l2) by auto. 
+                 replace (a0 :: a :: l1 ++ n :: l2)  with ([a0] ++ [a] ++ l1 ++ [n] ++ l2) by auto. 
+                 assert ([a] ++ l1 ++ [a0] ++ [n] ++ l2 = ([a] ++ l1 ++ [a0]) ++ ([n] ++ l2)).
+                 --- rewrite <- app_assoc. rewrite <- app_assoc. auto.
+                 ---  assert ([a0] ++ [a] ++ l1 ++ [n] ++ l2 = ([a0] ++ [a] ++ l1) ++ ([n] ++ l2)).
+                     +++ rewrite <- app_assoc. rewrite <- app_assoc. auto.
+                     +++ rewrite H. rewrite H0.  apply Permutation_app_tail. apply perm_trans with  ([a] ++ [a0] ++ l1).
+                         *** apply perm_skip.  apply Permutation_app_comm.
+                         *** apply perm_swap. 
+             ** apply perm_skip. apply IHl2.   
+            ++ apply perm_trans with (a0::a :: l1 ++ n :: l2). 
+               ** replace (a :: l1 ++ a0 :: n :: l2) with ([a] ++ l1 ++ [a0] ++ [n] ++ l2) by auto. 
+                 replace (a0 :: a :: l1 ++ n :: l2)  with ([a0] ++ [a] ++ l1 ++ [n] ++ l2) by auto. 
+                 assert ([a] ++ l1 ++ [a0] ++ [n] ++ l2 = ([a] ++ l1 ++ [a0]) ++ ([n] ++ l2)).
+                 --- rewrite <- app_assoc. rewrite <- app_assoc. auto.
+                 ---  assert ([a0] ++ [a] ++ l1 ++ [n] ++ l2 = ([a0] ++ [a] ++ l1) ++ ([n] ++ l2)).
+                     +++ rewrite <- app_assoc. rewrite <- app_assoc. auto.
+                     +++ rewrite H. rewrite H0.  apply Permutation_app_tail. apply perm_trans with  ([a] ++ [a0] ++ l1).
+                         *** apply perm_skip.  apply Permutation_app_comm.
+                         *** apply perm_swap. 
+               **  apply perm_skip. apply IHl2. 
+Qed.
+
+Lemma mergesort_perm: forall l, Permutation l (mergesort l).
+Proof.
+  (* FILL IN HERE *) 
+
+Admitted.
+
+
+
+Theorem mergesort_correct:
+  is_a_sorting_algorithm mergesort.
+Proof.
+  split.
+  apply mergesort_perm.
+  apply mergesort_sorts.
+Qed.
+
+ 
+
+
+ 
