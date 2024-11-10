@@ -218,9 +218,17 @@ Qed.
 
 Lemma mergesort_perm: forall l, Permutation l (mergesort l).
 Proof.
-  (* FILL IN HERE *) 
-
-Admitted.
+   apply mergesort_ind; intros.
+   - apply perm_nil.
+   - apply Permutation_refl.
+   - subst _x. apply perm_trans with ((mergesort l1) ++ (mergesort l2)). 
+     + apply perm_trans with (l1 ++ l2).
+       * apply split_perm.  auto.
+       * Search Permutation. apply Permutation_app. 
+         -- apply H. 
+         -- apply H0. 
+     + apply merge_perm. 
+Qed.
 
 
 
