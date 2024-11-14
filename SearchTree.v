@@ -224,10 +224,263 @@ Proof.
         -- rewrite Nat.ltb_irrefl in Hkk. inversion Hkk. 
         -- destruct (k >? k) eqn:Hk.
            ++  specialize (gtb_reflect k k).  intros. apply reflect_iff in H.
-               apply H in Hk. apply Arith_prebase.gt_irrefl_stt in Hk. inversion Hk. 
+               apply H in Hk.  apply Arith_prebase.gt_irrefl_stt in Hk. inversion Hk. 
       ++ auto.
 Qed. 
 
+Ltac bdestruct_guard :=
+  match goal with
+  | |- context [ if ?X =? ?Y then _ else _ ] => bdestruct (X =? Y)
+  | |- context [ if ?X <=? ?Y then _ else _ ] => bdestruct (X <=? Y)
+  | |- context [ if ?X <? ?Y then _ else _ ] => bdestruct (X <? Y)
+  | |- context [ if ?X >=? ?Y then _ else _ ] => bdestruct (X >=? Y)
+  | |- context [ if ?X >? ?Y then _ else _ ] => bdestruct (X >? Y)
+  end.
+
+
+Ltac bdall :=
+  repeat (simpl; bdestruct_guard; try lia; auto).
+
+Theorem lookup_insert_eq' :
+  forall (V : Type) (t : tree V) (d : V) (k : key) (v : V),
+    lookup d k (insert k v t) = v.
+Proof.
+  induction t; intros; bdall.
+Qed.
+
+Theorem lookup_insert_neq :
+  forall (V : Type) (t : tree V) (d : V) (k k' : key) (v : V),
+   k <> k' -> lookup d k' (insert k v t) = lookup d k' t.
+Proof. 
+  induction t; intros; bdall.
+Qed.
+
+Theorem bound_default :
+  forall (V : Type) (k : key) (d : V) (t : tree V),
+    bound k t = false -> lookup d k t = d.
+Proof.
+  induction t.
+  - intros. simpl. auto.
+  - intros. bdall.
+    + apply IHt1. inversion H. Search "<?". apply Nat.ltb_lt in H0. 
+      rewrite H0. auto. 
+    + apply IHt2. inversion H. Search "<?". apply Nat.ltb_ge in H0. 
+      rewrite H0. specialize (gtb_reflect k k0).  intros. Search reflect. apply reflect_iff in H2.
+      apply H2 in H1. rewrite H1. auto.
+    + inversion H. apply Nat.ltb_ge in H0.  rewrite H0 in H3. destruct (k >? k0) eqn:Hk. 
+      * specialize (gtb_reflect k k0). intros. apply reflect_iff in H2. apply H2 in Hk. 
+        assert (k > k). { lia. } apply Arith_prebase.gt_irrefl_stt in H4. inversion H4. 
+      * inversion H3. 
+Qed.
+
+Check lookup_empty. 
+Check t_apply_empty. 
+Check lookup_insert_eq.  
+Check t_update_eq. 
+Check lookup_insert_neq. 
+Check t_update_neq. 
+Check t_update_shadow.
+Check t_update_same.
+Check t_update_permute.
+
+Lemma lookup_insert_shadow :
+  forall (V : Type) (t : tree V) (v v' d: V) (k k' : key),
+    lookup d k' (insert k v (insert k v' t)) = lookup d k' (insert k v t).
+Proof.
+  intros. bdestruct (k =? k').
+  - subst k'. rewrite lookup_insert_eq.  rewrite lookup_insert_eq. auto.
+  - assert (k <> k').
+    + auto.
+    + eapply lookup_insert_neq in H. rewrite H. 
+      assert (k <> k').
+      * auto.
+      * eapply lookup_insert_neq in H1. rewrite H1. 
+        eapply lookup_insert_neq in H0. rewrite H0.
+        auto. 
+Qed.
+
+Lemma lookup_insert_same :
+  forall (V : Type) (k k' : key) (d : V) (t : tree V),
+    lookup d k' (insert k (lookup d k t) t) = lookup d k' t.
+Proof. 
+  intros. bdestruct (k =? k').
+  - subst k'. rewrite lookup_insert_eq. auto.
+  - eapply lookup_insert_neq in H. rewrite H. 
+    auto. 
+Qed.
+
+Lemma lookup_insert_permute :
+  forall (V : Type) (v1 v2 d : V) (k1 k2 k': key) (t : tree V),
+    k1 <> k2 ->
+    lookup d k' (insert k1 v1 (insert k2 v2 t))
+    = lookup d k' (insert k2 v2 (insert k1 v1 t)).
+Proof.
+  intros. bdestruct (k1 =? k'). 
+  - subst k'. assert (k2<>k1).
+    + lia. 
+    + eapply lookup_insert_neq in H0. rewrite H0. 
+      rewrite lookup_insert_eq. rewrite lookup_insert_eq. auto. 
+  - assert (k1 <> k').
+    + lia. 
+    + eapply lookup_insert_neq in H0. rewrite H0. bdestruct (k2 =? k').
+      * subst k'. rewrite lookup_insert_eq. rewrite lookup_insert_eq. auto.
+      * assert (k2 <> k'). 
+      -- lia. 
+      --  eapply lookup_insert_neq in H2. rewrite H2. 
+        eapply lookup_insert_neq in H3.   rewrite H3.
+        eapply lookup_insert_neq in H1. rewrite H1. auto.
+Qed.     
+
+Lemma insert_shadow_equality : forall (V : Type) (t : tree V) (k : key) (v v' : V),
+    insert k v (insert k v' t) = insert k v t.
+Proof.
+  induction t; intros; bdall.
+  - rewrite IHt1; auto.
+  - rewrite IHt2; auto.
+Qed.
+
+Lemma insert_same_equality_breaks :
+  exists (V : Type) (d : V) (t : tree V) (k : key),
+      insert k (lookup d k t) t <> t.
+Proof.
+  exists string.
+  exists EmptyString.
+  exists (T (T E 5 "five"%string E) 4 "four"%string (T E 2 "two"%string E)).
+  exists 2. 
+  simpl. intros contra. inversion contra.
+Qed.
+
+Lemma insert_permute_equality_breaks :
+  exists (V : Type) (v1 v2 : V) (k1 k2 : key) (t : tree V),
+    k1 <> k2 /\ insert k1 v1 (insert k2 v2 t) <> insert k2 v2 (insert k1 v1 t).
+Proof.
+   exists string.
+   exists "five"%string. 
+   exists "one"%string.
+   exists 5. exists 3.
+   exists (T E 2 "two"%string E).
+   split. 
+   - intros contra. inversion contra.
+   - simpl. intros contra. inversion contra.
+Qed.   
+
+Fixpoint elements {V : Type} (t : tree V) : list (key * V) :=
+  match t with
+  | E => []
+  | T l k v r => elements l ++ [(k, v)] ++ elements r
+  end.
+
+Example elements_ex :
+    elements ex_tree = [(2, "two"); (4, "four"); (5, "five")]%string.
+Proof. reflexivity. Qed.
+
+Definition elements_complete_spec :=
+  forall (V : Type) (k : key) (v d : V) (t : tree V),
+    bound k t = true ->
+    lookup d k t = v ->
+    In (k, v) (elements t).
+
+Theorem elements_complete : elements_complete_spec.
+Proof.
+ unfold elements_complete_spec. 
+ intros. induction t. 
+ - simpl in H. inversion H.
+ -  simpl in *. destruct (k <? k0) eqn:Hk.
+   + apply in_or_app. left. apply IHt1. 
+     * apply H.
+     * apply H0. 
+   + destruct (k >? k0) eqn:Hkk.
+     * apply in_or_app. right. Search In. apply in_cons. 
+       apply IHt2. 
+       -- apply H.
+       -- apply H0.
+     * subst v0. assert (k=k0). 
+       -- Search ">?". apply Nat.ltb_ge in Hk. specialize (gtb_reflect k k0).  intros.
+           rewrite Hkk in H0. Search reflect. inversion H0. apply not_gt in H1.  
+           lia.
+       -- subst k0. apply in_elt. 
+Qed.
+
+Definition elements_correct_spec :=
+  forall (V : Type) (k : key) (v d : V) (t : tree V),
+    BST t ->
+    In (k, v) (elements t) ->
+    bound k t = true /\ lookup d k t = v.
+
+Check Forall_app.
+
+Definition uncurry {X Y Z : Type} (f : X -> Y -> Z) '(a, b) :=
+  f a b.
+
+Hint Transparent uncurry : core.
+
+Lemma elements_preserves_forall : forall (V : Type) (P : key -> V -> Prop) (t : tree V),
+    ForallT P t ->
+    Forall (uncurry P) (elements t).
+Proof.
+  intros. induction t. 
+  - simpl. apply Forall_nil. 
+  - simpl. apply Forall_app. 
+    split. 
+    + apply IHt1. inversion H. destruct H1. apply H1.
+    + simpl. apply Forall_cons. 
+      * inversion H. unfold uncurry. apply H0.
+      * apply IHt2. inversion H. destruct H1. apply H2. 
+Qed.      
+
+Lemma elements_preserves_relation :
+  forall (V : Type) (k k' : key) (v : V) (t : tree V) (R : key -> key -> Prop),
+    ForallT (fun y _ => R y k') t
+    -> In (k, v) (elements t)
+    -> R k k'.
+Proof.
+ intros. apply elements_preserves_forall in H. 
+  unfold uncurry in H. simpl in H. rewrite Forall_forall in H. 
+ apply H in H0. apply H0.
+Qed.
+
+Theorem elements_correct : elements_correct_spec.
+Proof. 
+  unfold elements_correct_spec.  
+  intros.          
+  induction H.  
+  - simpl in H0. inversion H0. 
+  - simpl. simpl in H0. apply in_app_or in H0. destruct H0. 
+    + destruct (k <? x) eqn:Heq. 
+      * apply IHBST1. apply H0. 
+      * apply Nat.ltb_ge in Heq. 
+        assert (x=k \/ x<k).
+        -- lia.
+        -- destruct H4. 
+           ++ apply elements_preserves_relation with (k:=k) (v:=v) in H.
+              ** subst. apply Nat.lt_irrefl in H. inversion H.
+              ** apply H0.
+           ++ unfold gtb. apply elements_preserves_relation with (k:=k) (v:=v) in H. 
+              ** assert (k<k). 
+                 --- lia. 
+                 --- apply Nat.lt_irrefl in H5. inversion H5. 
+              ** apply H0.
+     + simpl in H0. destruct H0. 
+       * inversion H0. unfold gtb. rewrite Nat.ltb_irrefl. auto.
+       * destruct (k <? x) eqn:Heq. 
+         -- apply elements_preserves_relation with (k:=k) (v:=v) in H1.
+            ++ apply Nat.ltb_lt in Heq. assert (x<x). 
+                 --- lia. 
+                 --- apply Nat.lt_irrefl in H4. inversion H4.
+            ++ apply H0. 
+         -- apply Nat.ltb_ge in Heq. assert (x=k \/ x<k).
+        ++ lia.
+        ++ destruct H4. 
+           ** apply elements_preserves_relation with (k:=k) (v:=v) in H1.
+              --- subst. apply Nat.lt_irrefl in H1. inversion H1.
+              --- apply H0.
+           ** unfold gtb. Search "<?". apply Nat.ltb_lt in H4. rewrite H4.
+              apply IHBST2. apply H0.   
+Qed.
+
+
+ 
+              
 
 
 
@@ -243,9 +496,7 @@ Qed.
 
 
 
-
-
-
+ 
 
 
 
