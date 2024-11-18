@@ -580,14 +580,73 @@ Proof.
       * apply H0. 
       * apply H4.
 Qed.
-
+        
 Print NoDup.
 
 Definition disjoint {X:Type} (l1 l2: list X) := forall (x : X),
     In x l1 -> ~ In x l2.
 
+Lemma NoDup_append : forall (X:Type) (l1 l2: list X),
+  NoDup l1 -> NoDup l2 -> disjoint l1 l2 ->
+  NoDup (l1 ++ l2).
+Proof. 
+  intros X l1 l2 H.
+  generalize dependent l2.
+  induction H.  
+  - intros. rewrite app_nil_l. apply H. 
+  - intros. simpl.  Search NoDup. apply NoDup_cons. 
+    + Search In. intros contra. apply in_app_iff in contra. 
+      destruct contra. 
+      * apply H in H3. inversion H3. 
+      * unfold disjoint in H2. 
+       specialize H2 with x. apply H2.  
+       -- simpl. left. auto.  
+       --  apply H3. 
+    + apply IHNoDup. 
+      * apply H1. 
+      * unfold disjoint. intros. unfold disjoint in H2.
+        apply H2. simpl. right. apply H3. 
+Qed.
 
-
+Theorem elements_nodup_keys : forall (V : Type) (t : tree V),
+    BST t ->
+    NoDup (list_keys (elements t)).
+Proof.
+  intros. 
+  induction H. 
+  - simpl. apply NoDup_nil.
+  - simpl.  unfold list_keys. rewrite map_app. simpl. 
+    Search NoDup. apply NoDup_append. 
+    + unfold list_keys in IHBST1. apply IHBST1. 
+    + apply NoDup_cons. intros contra. 
+      * Search In. apply in_map_iff in contra.   
+        destruct contra as [x' Hc]. 
+        destruct x'. destruct Hc. 
+        simpl in H3. subst. apply elements_preserves_relation with (k:=x) (v:=v0) in H0.
+        -- apply Nat.lt_irrefl in H0. inversion H0. 
+        -- apply H4.
+      * apply IHBST2.
+    + unfold disjoint. intros.
+      intros contra. simpl in contra. apply in_map_iff in H3.
+      destruct contra. 
+      * subst.  destruct H3 as [x' H3]. destruct x'. destruct H3. 
+        simpl in H3. subst. 
+       eapply elements_preserves_relation with (k:=x0) (v:=v0) in H.
+       -- apply Nat.lt_irrefl in H. inversion H. 
+       -- apply H4. 
+      * apply in_map_iff in H4. destruct H3 as [x' H3]. destruct x'. destruct H3. 
+        simpl in H3. subst. 
+    destruct H4 as [x' H4]. destruct x'. destruct H4. 
+        simpl in H3. subst. 
+        apply elements_preserves_relation with (k:=x0) (v:=v0) in H.
+       -- apply elements_preserves_relation with (k:=x0) (v:=v1) in H0.
+          ++ assert (x0 < x0). 
+             ** lia.
+             **  apply Nat.lt_irrefl in H3. inversion H3. 
+          ++ apply H4.
+       -- apply H5. 
+Qed.   
+      
 
 
 
