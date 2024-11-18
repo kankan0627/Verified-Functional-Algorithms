@@ -423,7 +423,7 @@ Proof.
   - simpl. apply Forall_app. 
     split. 
     + apply IHt1. inversion H. destruct H1. apply H1.
-    + simpl. apply Forall_cons. 
+    + simpl. apply Forall_cons.  
       * inversion H. unfold uncurry. apply H0.
       * apply IHt2. inversion H. destruct H1. apply H2. 
 Qed.      
@@ -478,9 +478,113 @@ Proof.
               apply IHBST2. apply H0.   
 Qed.
 
-
- 
+Theorem elements_complete_inverse :
+  forall (V : Type) (k : key) (v : V) (t : tree V),
+    BST t ->
+    bound k t = false ->
+    ~ In (k, v) (elements t).
+Proof.
+  intros. intros contra. 
+  unshelve eapply elements_correct in H; auto. 
+  apply H in contra. 
+  destruct contra.
+  rewrite H1 in H0.
+  inversion H0. 
+Qed.  
               
+Lemma bound_value : forall (V : Type) (k : key) (t : tree V),
+    bound k t = true -> exists v, forall d, lookup d k t = v.
+Proof.
+  intros. 
+  induction t. 
+  - simpl in H. inversion H. 
+  - simpl in *.  destruct (k <? k0) eqn:Hk1.
+    + apply IHt1 in H. apply H. 
+    + destruct (k >? k0) eqn:Hk2.
+      * apply IHt2 in H. apply H.  
+      * exists v. auto.
+Qed.  
+
+Theorem elements_correct_inverse :
+  forall (V : Type) (k : key) (t : tree V),
+    (forall v, ~ In (k, v) (elements t)) ->
+    bound k t = false.
+Proof.
+ intros V k t Hi. apply not_true_is_false. intros Hb.
+  destruct (bound_value _ _ _ Hb) as [v Hl].
+  apply (Hi v). exact (elements_complete _ _ _ _ _ Hb (Hl v)).
+Qed.
+
+
+Lemma sorted_app: forall l1 l2 x,
+  Sort.sorted l1 -> Sort.sorted l2 ->
+  Forall (fun n => n < x) l1 -> Forall (fun n => n > x) l2 ->
+  Sort.sorted (l1 ++ x :: l2).
+Proof.
+  intros. induction H. 
+  - simpl. induction l2. 
+    + apply sorted_1. 
+    + apply sorted_cons. 
+      Search Forall. apply Forall_cons_iff in H2.
+      destruct H2. 
+      * lia. 
+      * apply H0. 
+  - replace ([x0] ++ x :: l2) with (x0 :: x :: l2) by auto.
+    apply sorted_cons. 
+    Search Forall. 
+    + apply Forall_inv in H1.  lia. 
+    + induction l2. 
+      * apply sorted_1.
+      * apply sorted_cons. 
+      Search Forall. apply Forall_cons_iff in H2.
+      destruct H2. 
+      -- lia. 
+      -- apply H0.
+  - rewrite <- app_comm_cons.  rewrite <- app_comm_cons.  
+    apply sorted_cons. 
+    + apply H.
+    + rewrite app_comm_cons. apply IHsorted. 
+      Search Forall. apply Forall_cons. 
+      *  apply Forall_cons_iff in H1.
+        destruct H1.   Search Forall. apply Forall_inv in H4. 
+        apply H4. 
+      * apply Forall_cons_iff in H1. destruct H1. 
+       apply Forall_cons_iff in H4. destruct H4. apply H5. 
+Qed.
+
+Definition list_keys {V : Type} (lst : list (key * V)) :=
+  map fst lst.
+
+Theorem sorted_elements : forall (V : Type) (t : tree V),
+    BST t -> Sort.sorted (list_keys (elements t)).
+Proof.
+  intros. 
+  induction H. 
+  - simpl. apply sorted_nil.
+  - simpl.  unfold list_keys. rewrite map_app. simpl.  
+    apply sorted_app. 
+    + apply IHBST1. 
+    + apply IHBST2.
+    + apply Forall_forall. 
+      intros. apply in_map_iff in H3. 
+      destruct H3 as [x' H3].
+      destruct H3. destruct x'. simpl in H3. subst. 
+      eapply elements_preserves_relation in H.
+      * apply H. 
+      * apply H4.
+    + apply Forall_forall. 
+      intros. apply in_map_iff in H3. destruct H3 as [x' H3].
+      destruct H3. destruct x'.
+      simpl in H3. subst.   
+      eapply elements_preserves_relation in H0.
+      * apply H0. 
+      * apply H4.
+Qed.
+
+Print NoDup.
+
+Definition disjoint {X:Type} (l1 l2: list X) := forall (x : X),
+    In x l1 -> ~ In x l2.
 
 
 
@@ -490,13 +594,6 @@ Qed.
 
 
 
-
-
-
-
-
-
- 
 
 
 
