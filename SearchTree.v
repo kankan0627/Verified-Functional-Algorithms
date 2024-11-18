@@ -647,9 +647,132 @@ Proof.
        -- apply H5. 
 Qed.   
       
+Fixpoint fast_elements_tr {V : Type} (t : tree V)
+         (acc : list (key * V)) : list (key * V) :=
+  match t with
+  | E => acc
+  | T l k v r => fast_elements_tr l ((k, v) :: fast_elements_tr r acc)
+  end.
 
 
+Definition fast_elements {V : Type} (t : tree V) : list (key * V) :=
+  fast_elements_tr t [].
 
+Lemma fast_elements_tr_helper :
+  forall (V : Type) (t : tree V) (lst : list (key * V)),
+    fast_elements_tr t lst = elements t ++ lst.
+Proof.
+  intros V. induction t. 
+  - intros. simpl. auto.
+  - intros. simpl. rewrite app_assoc_reverse. rewrite IHt2.  rewrite IHt1. 
+    rewrite app_comm_cons. auto.
+Qed.
+
+
+Lemma fast_elements_eq_elements : forall (V : Type) (t : tree V),
+    fast_elements t = elements t.
+Proof.
+  intros V.
+  induction t. 
+  - simpl. unfold fast_elements. simpl. auto.
+  - unfold fast_elements. simpl. rewrite fast_elements_tr_helper.
+    rewrite fast_elements_tr_helper. rewrite app_nil_r. auto. 
+Qed.
+
+Corollary fast_elements_correct :
+  forall (V : Type) (k : key) (v d : V) (t : tree V),
+    BST t ->
+    In (k, v) (fast_elements t) ->
+    bound k t = true /\ lookup d k t = v.
+Proof.
+  intros. apply elements_correct. 
+  - apply H.
+  - rewrite <- fast_elements_eq_elements. apply H0. 
+Qed. 
+
+Lemma elements_empty : forall (V : Type),
+    @elements V empty_tree = [].
+Proof.
+  intros. simpl. reflexivity.
+Qed.
+
+Fixpoint kvs_insert {V : Type} (k : key) (v : V) (kvs : list (key * V)) :=
+  match kvs with
+  | [] => [(k, v)]
+  | (k', v') :: kvs' =>
+    if k <? k' then (k, v) :: kvs
+    else if k >? k' then (k', v') :: kvs_insert k v kvs'
+         else (k, v) :: kvs'
+  end.
+
+Lemma kvs_insert_split :
+  forall (V : Type) (v v0 : V) (e1 e2 : list (key * V)) (k k0 : key),
+    Forall (fun '(k',_) => k' < k0) e1 ->
+    Forall (fun '(k',_) => k' > k0) e2 ->
+    kvs_insert k v (e1 ++ (k0,v0):: e2) =
+    if k <? k0 then
+      (kvs_insert k v e1) ++ (k0,v0)::e2
+    else if k >? k0 then
+           e1 ++ (k0,v0)::(kvs_insert k v e2)
+         else
+           e1 ++ (k,v)::e2.
+Proof.
+  intros.
+  destruct (k <? k0) eqn:Heq.
+  - induction e1. 
+    + simpl. rewrite Heq. auto.
+    +  Search Forall. simpl. destruct a. destruct (k <? k1).
+      * auto. 
+      * destruct (k >? k1). 
+        -- Search Forall. apply Forall_inv_tail in H.
+           apply IHe1 in H. rewrite H. auto.
+        -- auto.
+   - Search "<?". destruct (k >? k0) eqn:Hn.
+     + induction e1.
+       * simpl. rewrite Heq.  rewrite Hn. auto. 
+       * simpl. destruct a. destruct (k <? k1) eqn:Hk.
+         -- Search Forall.  apply Forall_inv in H.  
+            Search ">?".  
+            specialize gtb_reflect with (x:=k) (y:=k0). intros.
+            rewrite Hn in H1. Search reflect. 
+ apply reflect_iff in H1. assert (true = true).
+ ++ auto. 
+ ++ apply H1 in H2. 
+apply Nat.ltb_lt in Hk. assert (k1 > k0).
+    ** lia.
+    ** assert (k0>k0).
+       --- lia. 
+       --- Search ">".  apply Arith_prebase.gt_irrefl_stt in H4. inversion H4. 
+       -- destruct (k >? k1) eqn:Hneq.
+          ++  apply Forall_inv_tail in H. apply IHe1 in H. rewrite H. auto.
+          ++ apply Nat.ltb_ge in Hk.  apply Forall_inv in H. 
+             unfold gtb in Hneq. Search "<?".  apply Nat.ltb_ge in Hneq. 
+             Search "<?". unfold gtb in Hn. apply Nat.ltb_lt in Hn.
+             assert (k<k). 
+             ** lia. 
+             ** apply Arith_prebase.gt_irrefl_stt in H1. inversion H1. 
+       + induction e1.
+         * simpl. rewrite Heq.  rewrite Hn. auto. 
+         * simpl. destruct a.          
+            destruct (k <? k1) eqn:Hek. apply Forall_inv in H. Search "<?". 
+            apply Nat.ltb_ge in Heq. apply Nat.ltb_lt in Hek. assert (k<k).
+            -- lia. 
+            -- apply Arith_prebase.gt_irrefl_stt in H1. inversion H1.
+        -- destruct (k >? k1) eqn:Hee.
+           ++ apply Forall_inv_tail in H. apply IHe1 in H. 
+              rewrite H. auto. 
+           ++ apply Forall_inv in H. apply Nat.ltb_ge in Heq.
+              unfold gtb in Hee. apply Nat.ltb_ge in Hee. assert (k<k).
+            ** lia. 
+            ** apply Arith_prebase.gt_irrefl_stt in H1. inversion H1.
+Qed.
+
+Lemma kvs_insert_elements : forall (V : Type) (t : tree V),
+    BST t ->
+    forall (k : key) (v : V),
+      elements (insert k v t) = kvs_insert k v (elements t).
+Proof.
+  
 
 
 
