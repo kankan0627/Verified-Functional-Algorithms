@@ -772,13 +772,107 @@ Lemma kvs_insert_elements : forall (V : Type) (t : tree V),
     forall (k : key) (v : V),
       elements (insert k v t) = kvs_insert k v (elements t).
 Proof.
-  
+  intros. 
+  induction H. 
+  - simpl. auto.
+  - simpl. apply elements_preserves_forall in H. 
+    unfold uncurry in H.  
+    apply elements_preserves_forall in H0.
+    unfold uncurry in H0. 
+    destruct (k <? x) eqn:Hkx. 
+    + simpl. eapply kvs_insert_split in H. rewrite H. 
+      * rewrite Hkx in *. rewrite IHBST1. auto. 
+      * apply H0. 
+    +  destruct (k >? x) eqn:Heq.
+      * simpl. eapply kvs_insert_split in H0. rewrite H0.
+        -- rewrite Hkx. rewrite Heq. rewrite IHBST2. auto.
+        -- apply H.
+      * simpl. eapply kvs_insert_split in H0.
+        -- rewrite H0. rewrite Hkx. rewrite Heq. auto. 
+        -- apply H. 
+Qed.
+
+Fixpoint map_of_list {V : Type} (el : list (key * V)) : partial_map V :=
+  match el with
+  | [] => empty
+  | (k, v) :: el' => update (map_of_list el') k v
+  end.
+
+Definition Abs {V : Type} (t : tree V) : partial_map V :=
+  map_of_list (elements t).
+
+Definition find {V : Type} (d : V) (k : key) (m : partial_map V) : V :=
+  match m k with
+  | Some v => v
+  | None => d
+  end.
+
+Definition map_bound {V : Type} (k : key) (m : partial_map V) : bool :=
+  match m k with
+  | Some _ => true
+  | None => false
+  end.
+
+Lemma in_fst : forall (X Y : Type) (lst : list (X * Y)) (x : X) (y : Y),
+    In (x, y) lst -> In x (map fst lst).
+Proof.
+  intros. induction lst. 
+  - simpl in H. inversion H.
+  - simpl in *. destruct H. 
+    + subst. simpl. left. auto. 
+    + right. apply IHlst. apply H. 
+Qed.
+
+Lemma in_map_of_list : forall (V : Type) (el : list (key * V)) (k : key) (v : V),
+    NoDup (map fst el) ->
+    In (k,v) el -> (map_of_list el) k = Some v.
+Proof.
+  intros. 
+  induction el. 
+  - simpl in H0. inversion H0. 
+  - simpl in *. destruct a. destruct H0.  
+    + inversion H0. rewrite update_eq. auto. 
+    + simpl in H. apply NoDup_cons_iff in H.
+      destruct H. Locate update_eq. destruct (k0 =? k) eqn:Heq.
+      * rewrite Nat.eqb_eq in Heq.  subst k0. 
+        apply in_fst in H0. apply H in H0.  inversion H0. 
+      * rewrite Nat.eqb_neq in Heq. eapply update_neq  in Heq. rewrite Heq.
+        apply IHel. 
+        -- apply H1. 
+        -- apply H0. 
+Qed.
+
+Lemma not_in_map_of_list : forall (V : Type) (el : list (key * V)) (k : key),
+    ~ In k (map fst el) -> (map_of_list el) k = None.
+Proof.
+  intros. 
+  induction el.  
+  - simpl in *. Search empty.  apply apply_empty. 
+  - simpl in *. destruct a. simpl in H. Search (~ (_ \/ _)).  
+    apply Decidable.not_or in H. destruct H. eapply update_neq in H.
+    rewrite H. apply IHel. apply H0. 
+Qed.
+
+Lemma empty_relate : forall (V : Type),
+    @Abs V empty_tree = empty.
+Proof.
+  reflexivity.
+Qed.
+
+Theorem bound_relate : forall (V : Type) (t : tree V) (k : key),
+    BST t ->
+    map_bound k (Abs t) = bound k t.
+Proof.
+  intros.  
+  induction H. 
+  - rewrite empty_relate. unfold map_bound. rewrite apply_empty. simpl.  auto. 
+  - unfold Abs. simpl. destruct (k<?x) eqn:Hkx. 
+    + eapply elements_preserves_relation with (k:=x) (v:=v) in H0.
+      Search ">". apply Arith_prebase.gt_irrefl_stt in H0. inversion H0. 
+     
+      
 
 
 
 
-
-
-
-
-
+ 
