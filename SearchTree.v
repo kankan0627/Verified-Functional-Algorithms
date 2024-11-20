@@ -863,15 +863,46 @@ Theorem bound_relate : forall (V : Type) (t : tree V) (k : key),
     BST t ->
     map_bound k (Abs t) = bound k t.
 Proof.
-  intros.  
-  induction H. 
-  - rewrite empty_relate. unfold map_bound. rewrite apply_empty. simpl.  auto. 
-  - unfold Abs. simpl. destruct (k<?x) eqn:Hkx. 
-    + eapply elements_preserves_relation with (k:=x) (v:=v) in H0.
-      Search ">". apply Arith_prebase.gt_irrefl_stt in H0. inversion H0. 
-     
-      
+ unfold Abs. 
+  intros V t k H. unfold map_bound. destruct (bound k t) eqn:E. 
+  - destruct (bound_value _ _ _ E) as [v Hl].
+    rewrite in_map_of_list with (v := v).
+    + reflexivity.
+    + exact (elements_nodup_keys _ _ H).
+    + exact (elements_complete _ _ _ _ _ E (Hl v)).
+  - rewrite not_in_map_of_list.   
+    + reflexivity.
+    + destruct (elements t) eqn:Ht.  
+      * simpl. intros contra. inversion contra. 
+      * simpl. intros contra. destruct contra. 
+        -- destruct p. simpl in H0. subst k0. 
+           assert (In (k, v) (elements t)).
+           ++ rewrite Ht. simpl. left. auto. 
+           ++ specialize (elements_complete_inverse V k v t H E).
+              intros. apply H1 in H0. inversion H0. 
+        -- Search In. destruct p.
+            apply in_map_iff in H0.
+            destruct H0 as [x' H0]. destruct x'.
+            simpl in H0. destruct H0. subst k. assert (In (k1, v0) (elements t)).
+            ++ rewrite Ht. simpl. right. apply H1. 
+            ++ specialize (elements_complete_inverse V k1 v0 t H E).
+              intros. apply H2 in H0. inversion H0.
+Qed. 
 
+Lemma lookup_relate : forall (V : Type) (t : tree V) (d : V) (k : key),
+    BST t -> find d k (Abs t) = lookup d k t.
+Proof.
+  intros.              
+  unfold Abs. unfold find.  
+  apply bound_relate with (k:=k) in H. unfold Abs in H.         
+  induction (elements t).   
+  - simpl. simpl in H. unfold map_bound in H. rewrite apply_empty in H. 
+    symmetry. apply bound_default. auto.
+  - unfold map_bound in H.  destruct (bound k t) eqn:E. 
+    + erewrite in_map_of_list. simpl. destruct a. simpl in H. 
+   destruct (k0=?k) eqn:Hkk.
+     *  rewrite Nat.eqb_eq in Hkk. subst k0. rewrite update_eq. rewrite update_eq in H.
+      symmetry in H.        
 
 
 
