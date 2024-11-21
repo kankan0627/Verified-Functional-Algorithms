@@ -918,6 +918,25 @@ Proof.
               intros. apply H2 in H0. inversion H0.
 Qed. 
 
-
-
+Lemma insert_relate : forall (V : Type) (t : tree V) (k : key) (v : V),
+  BST t -> Abs (insert k v t) = update (Abs t) k v.
+Proof.
+  unfold Abs.
+  intros.
+  rewrite kvs_insert_elements; auto.
+  remember (elements t) as l.
+  clear -l. induction l. 
+  - simpl. auto.
+  - simpl. destruct a. destruct (k <? k0) eqn:H1.
+    + simpl. auto. 
+    + destruct (k >? k0) eqn:H2.
+      * simpl. rewrite IHl. Search update. 
+        rewrite update_permute. auto. unfold gtb in H2. 
+        rewrite Nat.ltb_lt in H2. lia.
+      * simpl. unfold gtb in H2. Search "<?". apply Nat.ltb_ge in H1. 
+        apply Nat.ltb_ge in H2. assert (k=k0).
+        -- lia.
+        -- subst k0. Search update. rewrite update_shadow. auto.
+Qed. 
+  
  
