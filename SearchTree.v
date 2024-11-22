@@ -939,4 +939,220 @@ Proof.
         -- subst k0. Search update. rewrite update_shadow. auto.
 Qed. 
   
- 
+Lemma elements_relate : forall (V : Type) (t : tree V),
+  BST t ->
+  map_of_list (elements t) = Abs t.
+Proof.
+  unfold Abs. intros. reflexivity.
+Qed.
+
+Definition union {X} (m1 m2: partial_map X) : partial_map X :=
+  fun k =>
+    match (m1 k, m2 k) with
+    | (None, None) => None
+    | (None, Some v) => Some v
+    | (Some v, None) => Some v
+    | (Some _, Some _) => None
+    end.
+
+Lemma union_left : forall {X} (m1 m2: partial_map X) k,
+    m2 k = None -> union m1 m2 k = m1 k.
+Proof.
+ intros. unfold union. 
+ destruct (m1 k) eqn:E1.
+ - destruct (m2 k) eqn:E2.
+   + inversion H.
+   + auto. 
+ - destruct (m2 k) eqn:E2.
+   + inversion H.
+   + auto. 
+Qed.
+
+
+Lemma union_right : forall {X} (m1 m2: partial_map X) k,
+    m1 k = None ->
+    union m1 m2 k = m2 k.
+Proof.
+  intros.  unfold union.
+  destruct (m1 k) eqn:E1.
+ - destruct (m2 k) eqn:E2.
+      + inversion H.
+   + inversion H.
+ - destruct (m2 k) eqn:E2.
+   + auto. 
+   + auto. 
+Qed.
+
+Lemma union_both : forall {X} (m1 m2 : partial_map X) k v1 v2,
+    m1 k = Some v1 ->
+    m2 k = Some v2 ->
+    union m1 m2 k = None.
+Proof.
+ intros. unfold union. 
+ rewrite H. rewrite H0. auto.
+Qed.
+
+Lemma union_update_right : forall {X} (m1 m2: partial_map X) k v,
+    m1 k = None ->
+    update (union m1 m2) k v = union m1 (update m2 k v).
+Proof.
+ intros. extensionality x.
+ destruct (k =? x) eqn:H1.
+ - rewrite Nat.eqb_eq in H1. subst x. rewrite update_eq.
+   unfold union. rewrite H. rewrite update_eq. auto.
+ -   rewrite Nat.eqb_neq in H1. assert (k <> x). 
+   + auto. 
+   + eapply update_neq in H1.
+   rewrite H1. unfold union. destruct (m1 x) eqn:Hm1.
+     * destruct (m2 x) eqn:Hm2.
+       -- eapply update_neq in H0. rewrite H0. rewrite Hm2.  auto. 
+       -- eapply update_neq in H0. rewrite H0. rewrite Hm2.  auto. 
+     * destruct (m2 x) eqn:Hm2.
+       -- eapply update_neq in H0. rewrite H0. rewrite Hm2.  auto. 
+       -- eapply update_neq in H0. rewrite H0. rewrite Hm2.  auto.  
+Qed.
+
+Lemma union_update_left : forall {X} (m1 m2: partial_map X) k v,
+    m2 k = None ->
+    update (union m1 m2) k v = union (update m1 k v) m2.
+Proof.
+  intros. extensionality x.
+ destruct (k =? x) eqn:H1.
+ - rewrite Nat.eqb_eq in H1. subst x. rewrite update_eq.
+   unfold union. rewrite H. rewrite update_eq. auto.
+ -   rewrite Nat.eqb_neq in H1. assert (k <> x). 
+    + auto. 
+   + eapply update_neq in H1.
+   rewrite H1. unfold union. destruct (m1 x) eqn:Hm1.
+     * destruct (m2 x) eqn:Hm2.
+       -- eapply update_neq in H0. rewrite H0. rewrite Hm1. auto. 
+       -- eapply update_neq in H0. rewrite H0. rewrite Hm1. auto. 
+     * destruct (m2 x) eqn:Hm2.
+       -- eapply update_neq in H0. rewrite H0. rewrite Hm1. auto. 
+       -- eapply update_neq in H0. rewrite H0. rewrite Hm1. auto.  
+Qed.
+
+Fixpoint map_of_tree {V : Type} (t: tree V) : partial_map V :=
+  match t with
+  | E => empty
+  | T l k v r => update (union (map_of_tree l) (map_of_tree r)) k v
+  end.
+
+Lemma map_of_tree_prop : forall (V : Type) (P : key -> V -> Prop) (t : tree V),
+    ForallT P t ->
+    forall k v, (map_of_tree t) k = Some v -> P k v.
+Proof.
+  intros. induction t. 
+  - simpl in H0. inversion H0.
+  - simpl in H. simpl in H0. 
+    destruct (k =? k0) eqn:H1.
+    + rewrite Nat.eqb_eq  in H1. subst k0. 
+      rewrite update_eq in H0. inversion H0. 
+      destruct H. subst v0. apply H. 
+    + rewrite Nat.eqb_sym in H1. 
+      rewrite Nat.eqb_neq  in H1. 
+      eapply update_neq in H1. rewrite H1 in H0. 
+      unfold union in H0. destruct H. destruct H2. 
+      destruct (map_of_tree t1 k) eqn:Hm1.
+      * destruct (map_of_tree t2 k) eqn:Hm2.
+        -- inversion H0.
+        -- apply IHt1 in H2.
+           ++ apply H2.
+           ++ apply H0. 
+      * destruct (map_of_tree t2 k) eqn:Hm2.
+        -- apply IHt2 in H3.
+           ++ apply H3.
+           ++ apply H0.
+        -- inversion H0. 
+Qed. 
+
+Definition Abs' {V : Type} (t: tree V) : partial_map V :=
+  map_of_tree t.
+
+Lemma empty_relate' : forall (V : Type), 
+    @Abs' V empty_tree = empty.
+Proof.
+  reflexivity.
+Qed.
+
+Theorem bound_relate' : forall (V : Type) (t : tree V) (k : key),
+    BST t ->
+    map_bound k (Abs' t) = bound k t.
+Proof. 
+  unfold Abs'.
+  intros. unfold map_bound.  
+  destruct (bound k t) eqn:E.
+  - induction t. 
+    + simpl in E. inversion E.
+    + simpl. simpl in E. destruct (k0 =? k) eqn:Hk. 
+      * rewrite Nat.eqb_eq in Hk. subst k0. rewrite update_eq.  auto.
+      * eapply Nat.eqb_neq in Hk. assert (k0 <> k).
+        -- auto. 
+        -- eapply update_neq in Hk. rewrite Hk. 
+        unfold union.  destruct (map_of_tree t1 k) eqn:Hm1.
+        ++ destruct (map_of_tree t2 k) eqn:Hm2.
+           ** inversion H. apply map_of_tree_prop with (k:=k) (v:=v0) in H5.
+              --- apply map_of_tree_prop with (k:=k) (v:=v1) in H6. 
+                  assert (k < k).
+                     +++ lia. 
+                     +++ Search "<". apply Nat.lt_irrefl in H9. inversion H9. 
+                     +++ apply Hm2.
+              --- apply Hm1. 
+           ** auto. 
+        ++ destruct (map_of_tree t2 k) eqn:Hm2.
+            ** auto. 
+            ** inversion H. destruct (k <? k0) eqn:Heqk.
+               --- apply IHt1 in H7. 
+                  +++ inversion H7. 
+                  +++ apply E. 
+               --- destruct (k >? k0) eqn:Heq.
+                    +++ apply IHt2 in H8. 
+                        *** inversion H8.
+                        ***  apply E.
+               +++ unfold gtb in Heq. apply Nat.ltb_ge in Heqk. 
+                  apply Nat.ltb_ge in Heq. assert (k=k0).
+                  *** lia. 
+                  *** symmetry in H9. apply H0 in H9. inversion H9.
+     - induction t. 
+    + simpl. auto. 
+    + simpl. simpl in E. destruct (k0 =? k) eqn:Hk.
+      * unfold gtb in E. apply Nat.eqb_eq in Hk. subst k0. 
+        rewrite Nat.ltb_irrefl in E. inversion E.
+      * eapply Nat.eqb_neq in Hk. assert (k0 <> k).
+        -- auto. 
+        -- eapply update_neq in Hk. rewrite Hk. 
+        unfold union.  destruct (map_of_tree t1 k) eqn:Hm1.
+        ++ destruct (map_of_tree t2 k) eqn:Hm2.
+           ** auto. 
+           ** inversion H. apply map_of_tree_prop with (k:=k) (v:=v0) in H5.
+              Search "<?". apply Nat.ltb_lt in H5. 
+              --- rewrite H5 in E. apply IHt1 in H7. 
+                  +++ inversion H7.
+                  +++ apply E. 
+              --- apply Hm1. 
+         ++ destruct (map_of_tree t2 k) eqn:Hm2.
+            ** inversion H. apply map_of_tree_prop with (k:=k) (v:=v0) in H6.
+               unfold gtb in E. unfold gt in H6. apply Nat.ltb_lt in H6.
+               --- destruct (k <? k0) eqn:Heq.
+                   +++  apply Nat.ltb_lt in Heq. apply Nat.ltb_lt in H6. 
+                        assert (k < k).
+                        *** lia.
+                        *** apply Nat.lt_irrefl in H9. inversion H9.
+                   +++ rewrite H6 in E. apply IHt2 in H8. 
+                       *** inversion H8.    
+                       *** apply E.
+               --- apply Hm2. 
+            ** auto.
+Qed.
+                    
+
+
+
+
+
+
+
+
+
+
+
