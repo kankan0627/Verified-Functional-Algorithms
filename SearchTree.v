@@ -1145,8 +1145,144 @@ Proof.
             ** auto.
 Qed.
                     
+Lemma lookup_relate' : forall (V : Type) (d : V) (t : tree V) (k : key),
+    BST t -> find d k (Abs' t) = lookup d k t.
+Proof.
+   intros. unfold Abs'.  
+   unfold find. induction t. 
+   - simpl. auto.
+   - simpl.  destruct (k0 =? k) eqn:Hk. 
+     + rewrite Nat.eqb_eq in Hk. subst k0. rewrite update_eq.  
+       unfold gtb. rewrite Nat.ltb_irrefl. auto.
+     + rewrite update_neq.
+       * destruct (k <? k0) eqn:Heqk.  
+         --  unfold union.  destruct (map_of_tree t1 k) eqn:Hm1.
+        ++ destruct (map_of_tree t2 k) eqn:Hm2.
+           ** inversion H. apply map_of_tree_prop with (k:=k) (v:=v0) in H4.
+              --- apply map_of_tree_prop with (k:=k) (v:=v1) in H5.
+                  +++ assert (k<k).
+                      *** Search "<". lia. 
+                      *** apply Nat.lt_irrefl in H8. inversion H8.
+                  +++ apply Hm2. 
+              --- apply Hm1.
+            ** inversion H. apply IHt1 in H6. apply H6. 
+       ++ destruct (map_of_tree t2 k) eqn:Hm2. 
+          ** inversion H. eapply map_of_tree_prop with (k:=k) (v:=v0) in H5.
+             --- rewrite Nat.ltb_lt in Heqk. 
+                  assert (k<k).
+                  +++ Search "<". lia. 
+                  +++ apply Nat.lt_irrefl in H8. inversion H8.
+             --- auto. 
+           ** inversion H. apply IHt1 in H6. auto. 
+     -- rewrite Nat.eqb_neq in Hk. rewrite Nat.ltb_ge in Heqk.
+        assert (k0<k).
+        ++ lia. 
+        ++ unfold gtb. Search "<?". apply Nat.ltb_lt in H0. rewrite H0. 
+           unfold union.  destruct (map_of_tree t1 k) eqn:Hm1.
+           ** destruct (map_of_tree t2 k) eqn:Hm2.
+              --- inversion H. apply map_of_tree_prop with (k:=k) (v:=v0) in H5.
+                  +++ apply map_of_tree_prop with (k:=k) (v:=v1) in H6.
+                      *** assert (k<k).
+                          ---- Search "<". lia. 
+                          ---- apply Nat.lt_irrefl in H9. inversion H9.
+                      *** apply Hm2. 
+                 +++ apply Hm1.
+              --- inversion H. apply map_of_tree_prop with (k:=k) (v:=v0) in H5.
+                  +++ assert (k<k).
+                      *** lia.
+                      ***  apply Nat.lt_irrefl in H9. inversion H9.
+                  +++ apply Hm1.
+           ** destruct (map_of_tree t2 k) eqn:Hm2.
+              --- inversion H.  apply IHt2 in H8. apply H8. 
+              --- inversion H.  apply IHt2 in H8. apply H8. 
+     * apply Nat.eqb_neq in Hk. apply Hk. 
+Qed.
 
-
+Lemma insert_relate' : forall (V : Type) (k : key) (v : V) (t : tree V),
+   BST t -> Abs' (insert k v t) = update (Abs' t) k v.
+Proof.
+  intros. extensionality x.
+  destruct (k =? x) eqn:H1.
+  - rewrite Nat.eqb_eq in H1. subst x. rewrite update_eq. unfold Abs'.
+    induction t. 
+    + simpl. rewrite update_eq. auto.
+    + simpl.  destruct (k <? k0) eqn:Hk.
+      * simpl. Search "<?". apply Nat.ltb_lt in Hk.
+        assert (k0<>k).
+        -- lia. 
+        -- apply update_neq with (X:= V) (v:=v0) (m:=(union (map_of_tree (insert k v t1)) (map_of_tree t2)) )in H0. rewrite H0. 
+           unfold union. inversion H. apply IHt1 in H7.
+           rewrite H7. destruct (map_of_tree t2 k) eqn:Hm2. 
+           ++ apply map_of_tree_prop with (V:=V) (k:=k) (v:=v2) in H6.
+              ** assert (k<k).
+                 --- lia.
+                 ---  apply Nat.lt_irrefl in H9. inversion H9.
+              ** apply Hm2. 
+           ++ auto. 
+       * destruct (k >? k0) eqn:H2k.
+         -- simpl.  assert (k0<>k).
+            ++ unfold gtb in H2k. apply Nat.ltb_lt in H2k. lia. 
+            ++  apply update_neq with (X:= V) (v:=v0) (m:=(union (map_of_tree t1) (map_of_tree (insert k v t2))) )in H0. rewrite H0. inversion H.
+               unfold union. destruct (map_of_tree t1 k) eqn:Hm1.
+               ** apply map_of_tree_prop with (V:=V) (k:=k) (v:=v2) in H5.
+                  --- assert (k<k).
+                      +++ unfold gtb in H2k. apply Nat.ltb_lt in H2k. lia. 
+                 +++ apply Nat.lt_irrefl in H9. inversion H9.
+              --- apply Hm1. 
+           ** apply IHt2 in H8. rewrite H8. auto.
+        -- simpl. rewrite update_eq. auto. 
+   - rewrite Nat.eqb_neq in H1. assert (k<>x).
+     + auto.
+     + apply update_neq with (X:= V) (v:=v) (m:= (Abs' t))in H1. 
+     rewrite H1. unfold Abs'. induction t. 
+     * simpl.  rewrite update_neq.
+       -- unfold union. rewrite apply_empty. auto. 
+       -- apply H0. 
+     * simpl. destruct (k <? k0) eqn:Hk.
+      -- simpl. destruct (k0 =? x) eqn:Hkx. 
+         ++ apply Nat.eqb_eq in Hkx. subst k0. rewrite update_eq. 
+            rewrite update_eq. auto. 
+         ++ apply Nat.eqb_neq in Hkx. assert (k0 <> x). 
+            ** apply Hkx. 
+            ** apply update_neq with (X:= V) (v:=v0) (m:=(union (map_of_tree (insert k v t1)) (map_of_tree t2)))in Hkx. rewrite Hkx. 
+               apply update_neq with (X:= V) (v:=v0) (m:=(union (map_of_tree t1) (map_of_tree t2)))in H2. rewrite H2.
+               --- inversion H. unfold union. apply IHt1 in H9. rewrite H9. 
+                   +++ destruct (map_of_tree t1 x) eqn:Hm1. 
+                       *** destruct (map_of_tree t2 x) eqn:Hm2.
+                           ---- auto. 
+                           ---- auto. 
+                       *** destruct (map_of_tree t2 x) eqn:Hm2. 
+                           ---- auto. 
+                           ---- auto.
+                   +++ apply update_neq with (X:= V) (v:=v) (m:= (Abs' t1))in H0. rewrite H0. auto. 
+       -- destruct (k >? k0) eqn:H2k. 
+          ++ simpl. destruct (k0 =? x) eqn:Hkx. 
+             ** apply Nat.eqb_eq in Hkx. subst k0. rewrite update_eq.  
+                  rewrite update_eq. auto. 
+             ** apply Nat.eqb_neq in Hkx. assert (k0 <> x). 
+            --- apply Hkx. 
+            --- apply update_neq with (X:= V) (v:=v0) (m:=(union (map_of_tree t1) (map_of_tree (insert k v t2))))in Hkx. rewrite Hkx. 
+               apply update_neq with (X:= V) (v:=v0) (m:=(union (map_of_tree t1) (map_of_tree t2)))in H2. rewrite H2.
+               +++ inversion H. unfold union. apply IHt2 in H10. rewrite H10. 
+                   *** destruct (map_of_tree t1 x) eqn:Hm1. 
+                       ---- destruct (map_of_tree t2 x) eqn:Hm2.
+                           ++++ auto. 
+                           ++++ auto. 
+                       ---- destruct (map_of_tree t2 x) eqn:Hm2. 
+                           ++++ auto. 
+                           ++++ auto.
+                   *** apply update_neq with (X:= V) (v:=v) (m:= (Abs' t2))in H0. rewrite H0. auto. 
+         ++ simpl.  apply Nat.ltb_ge in Hk. unfold gtb in H2k. 
+            apply Nat.ltb_ge in H2k. assert (k=k0).
+            ** lia. 
+            ** subst k0. assert (k <> x).
+               --- auto.
+               ---
+              apply update_neq with (X:= V) (v:=v) (m:=(union (map_of_tree t1) (map_of_tree t2)) )in H0.
+                   rewrite H0. 
+               apply update_neq with (X:= V) (v:=v0) (m:=(union (map_of_tree t1) (map_of_tree t2)) )in H2.
+                rewrite H2. auto.
+Qed.  
 
 
 
