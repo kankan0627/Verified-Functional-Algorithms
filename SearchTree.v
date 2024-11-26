@@ -1284,9 +1284,63 @@ Proof.
                 rewrite H2. auto.
 Qed.  
 
-
-
-
+Lemma map_of_list_app : forall (V : Type) (el1 el2: list (key * V)),
+   disjoint (map fst el1) (map fst el2) ->
+   map_of_list (el1 ++ el2) = union (map_of_list el1) (map_of_list el2).
+Proof.
+  intros. unfold disjoint in H. induction el1. 
+  - simpl in *. extensionality k. 
+   rewrite union_right. auto.   
+     rewrite apply_empty. auto. 
+  - simpl. destruct a. extensionality x. simpl in H. 
+    destruct (k=?x) eqn:Hkx. 
+    + rewrite Nat.eqb_eq in Hkx. subst x. rewrite update_eq. 
+      unfold union. rewrite update_eq. destruct (map_of_list el2 k ) eqn:Hm2. 
+      * specialize H with (x:=k). assert ( k = k \/ In k (map fst el1)). 
+        -- left. auto. 
+        -- apply H in H0. apply not_in_map_of_list in H0. rewrite Hm2 in H0. 
+           inversion H0. 
+       * auto. 
+    + rewrite Nat.eqb_neq in Hkx. assert (k <> x).   
+      * auto.   
+      * apply update_neq with (X:= V) (v:=v) (m:=(map_of_list (el1 ++ el2)))in Hkx.
+        rewrite Hkx. unfold union. 
+        apply update_neq with (X:= V) (v:=v) (m:=(map_of_list el1)) in H0.  rewrite H0. 
+        destruct (map_of_list el1 x) eqn:Hm1.
+        -- destruct (map_of_list el2 x ) eqn:Hm2.    
+           ++ assert ((forall x : key, In x (map fst el1) -> ~ In x (map fst el2))).
+              ** intros. specialize H with (x:=x0). 
+                 assert (k = x0 \/ In x0 (map fst el1)).
+                 --- right. apply H1. 
+                 --- apply H in H2. apply H2. 
+              **  unfold union. apply IHel1 in H1. 
+              rewrite H1. unfold union. rewrite Hm1. rewrite Hm2. 
+              auto.
+            ++ assert ((forall x : key, In x (map fst el1) -> ~ In x (map fst el2))).
+               ** intros. specialize H with (x:=x0). 
+                  assert (k = x0 \/ In x0 (map fst el1)).
+                  --- right. apply H1. 
+                  --- apply H in H2. apply H2. 
+               ** unfold union. apply IHel1 in H1. 
+                 rewrite H1. unfold union. rewrite Hm1. rewrite Hm2. auto. 
+          -- destruct (map_of_list el2 x ) eqn:Hm2.  
+              ++ assert ((forall x : key, In x (map fst el1) -> ~ In x (map fst el2))).
+              ** intros. specialize H with (x:=x0). 
+                 assert (k = x0 \/ In x0 (map fst el1)).
+                 --- right. apply H1. 
+                 --- apply H in H2. apply H2. 
+              **  unfold union. apply IHel1 in H1. 
+              rewrite H1. unfold union. rewrite Hm1. rewrite Hm2. 
+              auto.
+            ++ assert ((forall x : key, In x (map fst el1) -> ~ In x (map fst el2))).
+              ** intros. specialize H with (x:=x0). 
+                 assert (k = x0 \/ In x0 (map fst el1)).
+                 --- right. apply H1. 
+                 --- apply H in H2. apply H2. 
+              ** unfold union. apply IHel1 in H1. 
+                 rewrite H1. unfold union. rewrite Hm1. rewrite Hm2. 
+              auto.
+Qed.
 
 
 
