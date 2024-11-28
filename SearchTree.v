@@ -1343,6 +1343,34 @@ Proof.
 Qed.
 
 
-
-
+Lemma elements_relate' : forall (V : Type) (t : tree V),
+  BST t ->
+  map_of_list (elements t) = Abs' t. 
+Proof.
+  intros V t H.
+  induction H as [| l k v r Hll Hlr Hbl IHl Hbr IHr]; simpl.
+  - reflexivity. 
+  - rewrite map_of_list_app; simpl.
+    + rewrite <- union_update_right.
+      * rewrite IHl. rewrite IHr. reflexivity.
+      * apply not_in_map_of_list. intros Hi. apply in_map_iff in Hi.
+        destruct Hi as [x' Hi]. destruct x'. simpl in Hi. destruct Hi as [Hk Hi].
+        subst k0. 
+        apply (elements_preserves_relation _ _ _ _ _ _ Hll) in Hi.
+        exact (Nat.lt_irrefl _ Hi).
+    + intros k1 Hil Hir. 
+      apply in_map_iff in Hil.
+        destruct Hil as [x' Hil]. destruct x'. simpl in Hil. destruct Hil as [Hk Hil].
+        subst k0. 
+      apply (elements_preserves_relation _ _ _ _ _ _ Hll) in Hil.
+      simpl in Hir. destruct Hir as [E | Hir].
+      * rewrite E in Hil. exact (Nat.lt_irrefl _ Hil).
+      * apply in_map_iff in Hir.
+        destruct Hir as [x' Hir]. destruct x'. simpl in Hir. destruct Hir as [Hk Hir].
+        subst k0. 
+        apply (elements_preserves_relation _ _ _ _ _ _ Hlr) in Hir.
+        exact (Nat.lt_asymm _ _ Hil Hir).
+Qed.     
+ 
+ 
 
