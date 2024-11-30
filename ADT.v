@@ -179,6 +179,22 @@ Definition set (k : key) (v : V) (t : table) : table :=
 Theorem get_empty_default: forall (k : key),
       get k empty = default.
 Proof.
+  intros. unfold get. apply lookup_empty. 
+Qed.
+
+Theorem get_set_same: forall (k : key) (v : V) (t : table),
+      get k (set k v t) = v.
+Proof.
+  intros. unfold set. unfold get. apply lookup_insert_eq. 
+Qed.
+
+Theorem get_set_other: forall (k k' : key) (v : V) (t : table),
+      k <> k' -> get k' (set k v t) = get k' t.
+Proof.
+   intros. unfold set. unfold get. apply lookup_insert_neq.  apply H.
+Qed.
+
+End TreeTable.
 
 
 
